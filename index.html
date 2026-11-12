@@ -1,88 +1,122 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gold Study Journal</title>
+<title>After the Bell</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('abTheme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
-:root{--bg:#0d0f12;--panel:#14171c;--line:#242a33;--text:#e6e9ee;--mute:#8a93a1;--gold:#e8b84a;--win:#2fc76a;--loss:#e5484d;--be:#6b7686;--blue:#3b82f6}
+:root{--bg:#0d0f12;--panel:#14171c;--field:#0f1216;--side:#0a0c0f;--line:#242a33;--text:#e6e9ee;--body:#cfd4dc;--mute:#8a93a1;--gold:#e8b84a;--goldink:#e8b84a;--onGold:#1a1405;--win:#2fc76a;--loss:#e5484d;--be:#6b7686;--blue:#5b9bff;--winbg:#112419;--lossbg:#2a1315;--badbd:#5a2528;--badtx:#f0898c;--upbd:#1d4d31;--chipon:#3a1c1e}
+[data-theme=light]{--bg:#f3f4f6;--panel:#ffffff;--field:#f7f8fa;--side:#ffffff;--line:#dde1e7;--text:#1b2028;--body:#2b3340;--mute:#667085;--gold:#d9a21b;--goldink:#8a6400;--onGold:#1a1405;--win:#18864b;--loss:#d92d20;--be:#8792a2;--blue:#1d62d6;--winbg:#e8f7ee;--lossbg:#fdecec;--badbd:#f0b4b6;--badtx:#b42318;--upbd:#9bd7b2;--chipon:#fde8e8}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;line-height:1.5}
-.app{display:flex;min-height:100vh}
-.side{width:210px;background:#0a0c0f;border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
-.logo{display:flex;gap:10px;align-items:center;margin-bottom:14px;font-weight:700}
-.logo b{background:var(--gold);color:#1a1405;border-radius:7px;padding:4px 7px;font-size:13px}
-.nav{background:none;border:0;color:var(--mute);text-align:left;padding:9px 12px;border-radius:8px;font:inherit;cursor:pointer}
+html{font-size:15px}
+@media(min-width:1600px){html{font-size:16px}}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;line-height:1.5}
+.app{display:flex;min-height:100vh;width:100%}
+.side{width:230px;flex:none;background:var(--side);border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
+.logo{display:flex;gap:10px;align-items:center;margin-bottom:16px;font-weight:700;font-size:16px}
+.logo b{background:var(--gold);color:var(--onGold);border-radius:7px;padding:4px 7px;font-size:13px}
+.nav{background:none;border:0;color:var(--mute);text-align:left;padding:10px 12px;border-radius:8px;font:inherit;cursor:pointer}
 .nav:hover{color:var(--text)}
-.nav.on{background:var(--gold);color:#1a1405;font-weight:700}
+.nav.on{background:var(--gold);color:var(--onGold);font-weight:700}
 .sp{flex:1}
-.mini{font-size:12px;color:var(--mute);display:flex;gap:6px;flex-wrap:wrap}
-main{flex:1;padding:26px 30px;max-width:980px}
-h1{margin:0;font-size:24px}
+.sbox{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--mute)}
+.sbox .r{display:flex;gap:6px;flex-wrap:wrap}
+main{flex:1;min-width:0;padding:28px 40px 60px}
+h1{margin:0;font-size:26px}
 .sub{color:var(--mute);margin:2px 0 18px}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 button{font:inherit}
 .btn{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
 .btn:hover{border-color:var(--gold)}
-.btn.pri{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}
+.btn.pri{background:var(--gold);color:var(--onGold);border-color:var(--gold);font-weight:700}
 .btn.sm{padding:4px 10px;font-size:12px}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.banner{display:none;background:var(--lossbg);border:1px solid var(--badbd);color:var(--badtx);border-radius:10px;padding:10px 14px;margin-bottom:16px;align-items:center;gap:12px;flex-wrap:wrap}
+.banner.on{display:flex}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
 .card small{color:var(--mute)}
-.card .v{font-size:24px;font-weight:700;margin-top:2px}
+.card .v{font-size:26px;font-weight:700;margin-top:2px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
 .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-input,select,textarea{background:#0f1216;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;width:100%}
+input,select,textarea{background:var(--field);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;width:100%}
 .filters input,.filters select{width:auto}
-textarea{min-height:70px;resize:vertical}
-.entry{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--be);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+textarea{min-height:76px;resize:vertical}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:14px;align-items:start}
+.entry{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--be);border-radius:12px;padding:16px 18px}
 .entry.win{border-left-color:var(--win)}.entry.loss{border-left-color:var(--loss)}
 .eh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
-.eh h3{margin:0;font-size:16px}
+.eh h3{margin:0;font-size:17px}
 .tag{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:1px 9px;font-size:12px;margin:2px 4px 2px 0;color:var(--mute)}
-.tag.bad{border-color:#5a2528;color:#f0898c}
-.tag.up{color:var(--win);border-color:#1d4d31}.tag.down{color:var(--loss);border-color:#5a2528}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
-.blk h4{margin:0 0 2px;font-size:12px;color:var(--gold);font-weight:500}
-.blk p{margin:0;white-space:pre-wrap;color:#cfd4dc}
-.empty{text-align:center;color:var(--mute);padding:50px 10px;border:1px dashed var(--line);border-radius:12px}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;z-index:5}
+.tag.bad{border-color:var(--badbd);color:var(--badtx)}
+.tag.up{color:var(--win);border-color:var(--upbd)}.tag.down{color:var(--loss);border-color:var(--badbd)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+.blk h4{margin:0 0 2px;font-size:12px;color:var(--goldink);font-weight:500}
+.blk p{margin:0;white-space:pre-wrap;color:var(--body)}
+.blk.full{grid-column:1/-1}
+.imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:12px}
+.imgs figure{margin:0}
+.imgs img{width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:var(--field)}
+.imgs figcaption{font-size:12px;color:var(--mute);margin-top:2px}
+.empty{text-align:center;color:var(--mute);padding:60px 10px;border:1px dashed var(--line);border-radius:12px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;z-index:5}
 .modal.open{display:flex}
-.sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;width:100%;max-width:720px}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;width:100%;max-width:1040px}
 .sheet h2{margin:0 0 4px}
-.sec{color:var(--gold);font-size:13px;margin:18px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
-.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.sec{color:var(--goldink);font-size:13px;font-weight:700;margin:20px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{border:1px solid var(--line);background:#0f1216;color:var(--mute);border-radius:20px;padding:4px 11px;cursor:pointer;font-size:12px}
-.chip.on{background:#3a1c1e;border-color:var(--loss);color:#f0898c}
-.acts{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.chip{border:1px solid var(--line);background:var(--field);color:var(--mute);border-radius:20px;padding:4px 11px;cursor:pointer;font-size:12px}
+.chip.on{background:var(--chipon);border-color:var(--loss);color:var(--badtx)}
+.acts{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--mute)}
+.drop.over{border-color:var(--gold)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:10px}
+.tile{border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--field)}
+.tile img{width:100%;height:130px;object-fit:cover;border-radius:6px;cursor:zoom-in}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 .cal .h{color:var(--mute);font-size:12px;text-align:center}
-.day{min-height:64px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:left;color:var(--text);cursor:pointer}
+.day{min-height:96px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;text-align:left;color:var(--text);cursor:pointer}
 .day.off{opacity:.35;cursor:default}
-.day.win{border-color:var(--win);background:#112419}.day.loss{border-color:var(--loss);background:#2a1315}.day.be{border-color:var(--be)}
-.day b{font-size:12px}.day span{display:block;font-size:11px;color:var(--mute)}
-.bar{display:flex;align-items:center;gap:10px;margin:6px 0}
+.day.win{border-color:var(--win);background:var(--winbg)}.day.loss{border-color:var(--loss);background:var(--lossbg)}.day.be{border-color:var(--be)}
+.day b{font-size:13px}.day span{display:block;font-size:12px;color:var(--mute)}
+.bar{display:flex;align-items:center;gap:10px;margin:8px 0}
 .bar i{display:block;height:10px;background:var(--loss);border-radius:5px}
-.bar em{min-width:130px;font-style:normal;color:var(--mute)}
-@media(max-width:760px){.app{flex-direction:column}.side{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center}.sp,.mini{display:none}main{padding:18px 14px}.grid2{grid-template-columns:1fr}}
+.bar em{min-width:140px;font-style:normal;color:var(--mute)}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:9;padding:20px;cursor:zoom-out}
+.lb.open{display:flex}
+.lb img{max-width:96vw;max-height:84vh;border-radius:8px}
+.lb p{color:#fff;margin:10px 0 0}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:10;display:none;max-width:420px}
+@media(max-width:900px){.app{flex-direction:column}.side{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center}.sp,.sbox{display:none}main{padding:18px 14px}.grid2,.two{grid-template-columns:1fr}.list{grid-template-columns:1fr}.cols{grid-template-columns:1fr}.day{min-height:60px}}
 </style>
 </head>
 <body>
 <div class="app">
   <aside class="side">
-    <div class="logo"><b>XAU</b><span>Gold Study Journal</span></div>
+    <div class="logo"><b>XAU</b><span>After the Bell</span></div>
     <button class="nav on" data-v="journal">Journal</button>
     <button class="nav" data-v="calendar">Calendar</button>
     <button class="nav" data-v="insights">Insights</button>
     <div class="sp"></div>
-    <div class="mini"><button class="btn sm" id="exJ">↓ JSON</button><button class="btn sm" id="exC">↓ CSV</button><button class="btn sm" id="imp">↑ Import</button></div>
+    <div class="sbox">
+      <b style="color:var(--text)">Backup</b>
+      <div class="r"><button class="btn sm pri" id="exA">↓ Full backup</button></div>
+      <div class="r"><button class="btn sm" id="imp">↑ Restore</button><button class="btn sm" id="exC">↓ CSV</button></div>
+      <div id="last"></div>
+      <div id="usage"></div>
+      <button class="btn sm" id="theme">Light mode</button>
+    </div>
     <input type="file" id="file" accept=".json" hidden>
+    <input type="file" id="pics" accept="image/*" multiple hidden>
   </aside>
   <main>
     <div class="top"><div><h1 id="title">Journal</h1><p class="sub" id="sub"></p></div><button class="btn pri" id="add">+ Log a day</button></div>
+    <div class="banner" id="banner"><span id="bmsg"></span><button class="btn sm pri" id="bnow">Back up now</button></div>
     <div id="view"></div>
   </main>
 </div>
@@ -98,8 +132,10 @@ label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
     <div><label>Low</label><input type="number" step="0.01" id="l"></div>
     <div><label>Close</label><input type="number" step="0.01" id="c"></div>
   </div>
-  <label>How did price move? (Asia, London, New York, key levels, FVGs, sweeps)</label><textarea id="mkt"></textarea>
-  <label>News and drivers (USD data, yields, geopolitics)</label><textarea id="news"></textarea>
+  <div class="two">
+    <div><label>How did price move? (Asia, London, New York, key levels)</label><textarea id="mkt"></textarea></div>
+    <div><label>News and drivers (USD data, yields, geopolitics)</label><textarea id="news"></textarea></div>
+  </div>
   <div class="sec">2. What I did</div>
   <div class="row">
     <div><label>Result</label><select id="res"><option>Win</option><option>Loss</option><option>Breakeven</option><option>No trade</option></select></div>
@@ -109,33 +145,92 @@ label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
   </div>
   <label>My bias and trade (entry, stop, target, reasoning)</label><textarea id="did"></textarea>
   <div class="sec">3. Review</div>
-  <label>What went well</label><textarea id="well"></textarea>
-  <label>What failed</label><textarea id="fail"></textarea>
+  <div class="two">
+    <div><label>What went well</label><textarea id="well"></textarea></div>
+    <div><label>What failed</label><textarea id="fail"></textarea></div>
+  </div>
   <label>Mistakes I made</label><div class="chips" id="chips"></div>
-  <label>What I did wrong, in my own words</label><textarea id="wrong"></textarea>
-  <label>What I will do differently</label><textarea id="diff"></textarea>
+  <div class="two">
+    <div><label>What I did wrong, in my own words</label><textarea id="wrong"></textarea></div>
+    <div><label>What I will do differently</label><textarea id="diff"></textarea></div>
+  </div>
   <label>One lesson for tomorrow</label><input id="lesson">
-  <div class="row"><div><label>Discipline score (1 to 5)</label><select id="disc"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select></div><div><label>Chart link (optional)</label><input id="link" placeholder="TradingView URL"></div></div>
+  <label>Free notes (anything else on your mind)</label><textarea id="notes"></textarea>
+  <div class="row"><div><label>Discipline score (1 to 5)</label><select id="disc"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div><div><label>Chart link (optional)</label><input id="link" placeholder="TradingView URL"></div></div>
+  <div class="sec">4. Charts and screenshots</div>
+  <div class="drop" id="drop">Drag images here, paste a screenshot with Ctrl+V, or <button type="button" class="btn sm" id="pick">choose files</button><br><small>Images are shrunk to save space and stored in your browser. The full backup includes them.</small></div>
+  <div class="tiles" id="tiles"></div>
   <div class="acts"><button class="btn" id="del" style="margin-right:auto;color:var(--loss)">Delete</button><button class="btn" id="cancel">Cancel</button><button class="btn pri" id="save">Save day</button></div>
 </div></div>
 
+<div class="lb" id="lb"><img alt=""><p></p></div>
+<div class="toast" id="toast"></div>
+
 <script>
-const KEY='goldStudyJournal.v1';
-const MISTAKES=['FOMO entry','Entered early','Moved stop loss','Over-traded','Ignored my plan','Traded the news','Revenge trade','Oversized lot','Exited too early','Held too long','Wrong bias','No mistake'];
-let data=[],view='journal',editing=null,calMonth=new Date(),picked=[];
-try{data=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){data=[]}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){alert('Could not save. Browser storage may be blocked.')}};
+const MISTAKES=['FOMO entry','Entered early','Moved stop loss','Over-traded','Ignored my plan','Traded the news','Revenge trade','Oversized lot','Exited too early','Held too long','Wrong bias','No mistake'];
+const F=['date','dir','o','h','l','c','mkt','news','res','pnl','plan','ana','did','well','fail','wrong','diff','lesson','notes','disc','link'];
+let data=[],view='journal',editing=null,calMonth=new Date(),pending=[],urlCache={};
+
+/* ---------- storage (IndexedDB: entries + images) ---------- */
+const DB={db:null,
+ open(){return new Promise((res,rej)=>{const r=indexedDB.open('afterTheBell',1);r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('entries',{keyPath:'date'});d.createObjectStore('images',{keyPath:'id'})};r.onsuccess=()=>{this.db=r.result;res()};r.onerror=()=>rej(r.error)})},
+ run(s,mode,fn){if(!this.db)return Promise.resolve(undefined);return new Promise((res,rej)=>{const t=this.db.transaction(s,mode);const rq=fn(t.objectStore(s));t.oncomplete=()=>res(rq&&rq.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})},
+ all(s){return this.run(s,'readonly',o=>o.getAll()).then(r=>r||[])},
+ get(s,k){return this.run(s,'readonly',o=>o.get(k))},
+ put(s,v){return this.run(s,'readwrite',o=>o.put(v))},
+ del(s,k){return this.run(s,'readwrite',o=>o.delete(k))}
+};
+const changed=()=>{localStorage.abChanges=(+localStorage.abChanges||0)+1;banner()};
 const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n||0).toFixed(2);
 const cls=r=>r==='Win'?'win':r==='Loss'?'loss':'be';
-const range=e=>(e.h&&e.l)?Math.round((e.h-e.l)*10)/10:null;
+const range=e=>(e.h!=null&&e.l!=null)?Math.round((e.h-e.l)*10)/10:null;
+const uid=()=>'img_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function toast(m,ms=4500){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',ms)}
 
+/* ---------- images ---------- */
+async function shrink(file){
+  const bmp=await createImageBitmap(file),s=Math.min(1,1800/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas');c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+  return new Promise(r=>c.toBlob(r,'image/jpeg',.85));
+}
+async function getURL(id){
+  if(urlCache[id])return urlCache[id];
+  const r=await DB.get('images',id);if(!r)return '';
+  return urlCache[id]=URL.createObjectURL(r.blob);
+}
+function hydrate(root){root.querySelectorAll('img[data-img]').forEach(async im=>{const u=await getURL(im.dataset.img);if(u)im.src=u})}
+async function addFiles(files){
+  for(const f of files){
+    if(!f.type.startsWith('image/'))continue;
+    try{const blob=await shrink(f),id=uid();urlCache[id]=URL.createObjectURL(blob);pending.push({id,cap:'',blob})}catch(e){toast('Could not read '+f.name)}
+  }
+  renderTiles();
+}
+function renderTiles(){
+  $('tiles').innerHTML=pending.map((p,i)=>`<div class="tile"><img data-img="${p.id}" alt=""><input data-cap="${i}" value="${esc(p.cap)}" placeholder="Caption (e.g. London sweep, my entry)"><button type="button" class="btn sm" data-rm="${i}">Remove</button></div>`).join('');
+  hydrate($('tiles'));
+}
+$('tiles').addEventListener('input',e=>{if(e.target.dataset.cap!=null)pending[e.target.dataset.cap].cap=e.target.value});
+$('tiles').addEventListener('click',e=>{if(e.target.dataset.rm!=null){pending.splice(+e.target.dataset.rm,1);renderTiles()}});
+$('pick').onclick=()=>$('pics').click();
+$('pics').onchange=e=>{addFiles([...e.target.files]);e.target.value=''};
+$('drop').ondragover=e=>{e.preventDefault();$('drop').classList.add('over')};
+$('drop').ondragleave=()=>$('drop').classList.remove('over');
+$('drop').ondrop=e=>{e.preventDefault();$('drop').classList.remove('over');addFiles([...e.dataTransfer.files])};
+document.addEventListener('paste',e=>{if(!$('modal').classList.contains('open'))return;const f=[...(e.clipboardData?.files||[])].filter(x=>x.type.startsWith('image/'));if(f.length){e.preventDefault();addFiles(f)}});
+document.addEventListener('click',async e=>{
+  const im=e.target.closest('img[data-img]');if(!im||!im.src)return;
+  const lb=$('lb');lb.querySelector('img').src=im.src;lb.querySelector('p').textContent=im.alt||'';lb.classList.add('open');
+});
+$('lb').onclick=()=>$('lb').classList.remove('open');
+
+/* ---------- form ---------- */
 $('chips').innerHTML=MISTAKES.map(m=>`<button type="button" class="chip" data-m="${m}">${m}</button>`).join('');
-$('chips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;b.classList.toggle('on')};
-
-const F=['date','dir','o','h','l','c','mkt','news','res','pnl','plan','ana','did','well','fail','wrong','diff','lesson','disc','link'];
+$('chips').onclick=e=>{const b=e.target.closest('.chip');if(b)b.classList.toggle('on')};
 function openForm(date){
   editing=date&&data.find(x=>x.date===date)||null;
   $('mt').textContent=editing?'Edit '+fmtDate(editing.date):'Log a trading day';
@@ -143,48 +238,64 @@ function openForm(date){
   if(!editing){$('date').value=new Date().toISOString().slice(0,10);$('dir').value='Bullish';$('res').value='Win';$('plan').value='Yes';$('ana').value='Yes';$('disc').value='4'}
   const on=editing?editing.mistakes||[]:[];
   document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',on.includes(c.dataset.m)));
+  pending=editing?(editing.imgs||[]).map(i=>({id:i.id,cap:i.cap||''})):[];
+  renderTiles();
   $('del').style.display=editing?'':'none';
   $('modal').classList.add('open');
 }
-function closeForm(){$('modal').classList.remove('open')}
+const closeForm=()=>$('modal').classList.remove('open');
 $('add').onclick=()=>openForm();$('cancel').onclick=closeForm;
 $('modal').onclick=e=>{if(e.target.id==='modal')closeForm()};
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeForm()});
-$('save').onclick=()=>{
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('lb').classList.contains('open'))$('lb').classList.remove('open');else closeForm()}});
+$('save').onclick=async()=>{
   const r={};F.forEach(k=>r[k]=$(k).value.trim());
   if(!r.date){alert('Pick a date first.');return}
   ['o','h','l','c','pnl'].forEach(k=>r[k]=r[k]===''?null:parseFloat(r[k]));
   r.disc=parseInt(r.disc);
   r.mistakes=[...document.querySelectorAll('.chip.on')].map(c=>c.dataset.m);
+  r.imgs=pending.map(p=>({id:p.id,cap:p.cap.trim()}));
   const dupe=data.find(x=>x.date===r.date&&(!editing||x.date!==editing.date));
   if(dupe&&!confirm('You already logged this date. Replace it?'))return;
+  try{
+    for(const p of pending)if(p.blob)await DB.put('images',{id:p.id,blob:p.blob});
+    const keep=new Set(r.imgs.map(i=>i.id));
+    for(const old of [editing,dupe].filter(Boolean))for(const i of old.imgs||[])if(!keep.has(i.id))await DB.del('images',i.id);
+    if(editing&&editing.date!==r.date)await DB.del('entries',editing.date);
+    await DB.put('entries',r);
+  }catch(err){alert('Could not save. Your browser may be blocking storage. Try a normal (not private) window.');return}
   data=data.filter(x=>x.date!==r.date&&(!editing||x.date!==editing.date));
   data.push(r);data.sort((a,b)=>b.date.localeCompare(a.date));
-  persist();closeForm();render();
+  changed();closeForm();render();usage();
 };
-$('del').onclick=()=>{if(confirm('Delete this day for good?')){data=data.filter(x=>x.date!==editing.date);persist();closeForm();render()}};
+$('del').onclick=async()=>{
+  if(!confirm('Delete this day and its images for good?'))return;
+  for(const i of editing.imgs||[])await DB.del('images',i.id);
+  await DB.del('entries',editing.date);
+  data=data.filter(x=>x.date!==editing.date);changed();closeForm();render();usage();
+};
 
-function block(t,v){return v?`<div class="blk"><h4>${t}</h4><p>${esc(v)}</p></div>`:''}
+/* ---------- views ---------- */
+const block=(t,v,full)=>v?`<div class="blk${full?' full':''}"><h4>${t}</h4><p>${esc(v)}</p></div>`:'';
 function entryHTML(e){
   const r=range(e);
   return `<div class="entry ${cls(e.res)}">
   <div class="eh"><h3>${fmtDate(e.date)}</h3><div><span class="tag ${e.dir==='Bullish'?'up':e.dir==='Bearish'?'down':''}">${e.dir}</span><span class="tag">${e.res} ${e.pnl!=null?money(e.pnl):''}</span><button class="btn sm" data-edit="${e.date}">Edit</button></div></div>
   <div style="color:var(--mute);margin:4px 0">${e.o!=null?`O ${e.o} · H ${e.h} · L ${e.l} · C ${e.c}`:''}${r?` · Range ${r}`:''}</div>
   <div><span class="tag">Plan followed: ${e.plan}</span><span class="tag">Analysis correct: ${e.ana}</span><span class="tag">Discipline ${e.disc}/5</span>${(e.mistakes||[]).map(m=>`<span class="tag ${m==='No mistake'?'':'bad'}">${esc(m)}</span>`).join('')}</div>
-  <div class="grid2">${block('What gold did',e.mkt)}${block('News and drivers',e.news)}${block('What I did',e.did)}${block('What went well',e.well)}${block('What failed',e.fail)}${block('What I did wrong',e.wrong)}${block('What I will do differently',e.diff)}${block('Lesson for tomorrow',e.lesson)}</div>
-  ${e.link?`<p style="margin:8px 0 0"><a style="color:var(--blue)" href="${esc(e.link)}" target="_blank" rel="noopener">Open chart</a></p>`:''}
+  <div class="grid2">${block('What gold did',e.mkt)}${block('News and drivers',e.news)}${block('What I did',e.did,1)}${block('What went well',e.well)}${block('What failed',e.fail)}${block('What I did wrong',e.wrong)}${block('What I will do differently',e.diff)}${block('Lesson for tomorrow',e.lesson,1)}${block('Notes',e.notes,1)}</div>
+  ${(e.imgs||[]).length?`<div class="imgs">${e.imgs.map(i=>`<figure><img data-img="${i.id}" alt="${esc(i.cap)}"><figcaption>${esc(i.cap)}</figcaption></figure>`).join('')}</div>`:''}
+  ${e.link?`<p style="margin:10px 0 0"><a style="color:var(--blue)" href="${esc(e.link)}" target="_blank" rel="noopener">Open chart link</a></p>`:''}
   </div>`;
 }
-
 function renderJournal(){
   const q=$('q')?$('q').value.toLowerCase():'',f=$('fr')?$('fr').value:'';
   const list=data.filter(e=>(!f||e.res===f)&&(!q||JSON.stringify(e).toLowerCase().includes(q)));
-  $('view').innerHTML=`<div class="filters"><input id="q" placeholder="Search notes, mistakes, lessons" value="${esc(q)}" style="min-width:240px"><select id="fr"><option value="">All results</option>${['Win','Loss','Breakeven','No trade'].map(x=>`<option ${x===f?'selected':''}>${x}</option>`).join('')}</select></div>`+
-  (list.length?list.map(entryHTML).join(''):`<div class="empty">${data.length?'No days match that search.':'No days logged yet. After the New York close, press “Log a day” and write down what gold did.'}</div>`);
+  $('view').innerHTML=`<div class="filters"><input id="q" placeholder="Search notes, mistakes, lessons" value="${esc(q)}" style="min-width:260px"><select id="fr"><option value="">All results</option>${['Win','Loss','Breakeven','No trade'].map(x=>`<option ${x===f?'selected':''}>${x}</option>`).join('')}</select></div>`+
+  (list.length?`<div class="list">${list.map(entryHTML).join('')}</div>`:`<div class="empty">${data.length?'No days match that search.':'No days logged yet. After the New York close, press “Log a day” and write down what gold did.'}</div>`);
   $('q').oninput=renderJournal;$('fr').onchange=renderJournal;
-  if(q)$('q').focus(),$('q').setSelectionRange(q.length,q.length);
+  if(q){$('q').focus();$('q').setSelectionRange(q.length,q.length)}
+  hydrate($('view'));
 }
-
 function renderCalendar(){
   const y=calMonth.getFullYear(),m=calMonth.getMonth(),first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),pad=(first.getDay()+6)%7;
   let h=`<div class="filters"><button class="btn" id="pm">‹ Prev</button><b style="padding:8px">${first.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</b><button class="btn" id="nm">Next ›</button></div><div class="cal">`+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="h">${d}</div>`).join('');
@@ -197,7 +308,6 @@ function renderCalendar(){
   $('pm').onclick=()=>{calMonth=new Date(y,m-1,1);renderCalendar()};
   $('nm').onclick=()=>{calMonth=new Date(y,m+1,1);renderCalendar()};
 }
-
 function renderInsights(){
   if(!data.length){$('view').innerHTML='<div class="empty">Log a few days and your patterns will show up here.</div>';return}
   const n=data.length,traded=data.filter(e=>e.res!=='No trade'),w=data.filter(e=>e.res==='Win').length,l=data.filter(e=>e.res==='Loss').length;
@@ -215,42 +325,80 @@ function renderInsights(){
   <div class="card"><small>Total P&amp;L</small><div class="v" style="color:${pnl>=0?'var(--win)':'var(--loss)'}">${money(pnl)}</div></div>
   <div class="card"><small>Analysis correct</small><div class="v">${Math.round(rights/n*100)}%</div></div>
   <div class="card"><small>Plan followed</small><div class="v">${Math.round(follow/n*100)}%</div></div>
-  <div class="card"><small>Avg discipline</small><div class="v">${disc}/5</div></div></div>
-  <div class="card" style="margin-bottom:14px"><small>Win rate when I followed my plan vs when I did not</small><div class="v">${wr(wf)} <span style="color:var(--mute);font-size:14px">vs</span> ${wr(nf)}</div></div>
-  <div class="card" style="margin-bottom:14px"><b>Mistakes that cost me most often</b>${rows.length?rows.map(([k,v])=>`<div class="bar"><em>${esc(k)}</em><i style="width:${v/max*55}%"></i><span>${v}</span></div>`).join(''):'<p style="color:var(--mute)">No mistakes tagged yet.</p>'}</div>
-  <div class="card"><b>Latest lessons</b>${lessons.length?lessons.map(e=>`<p style="margin:8px 0"><span style="color:var(--mute)">${fmtDate(e.date)}</span><br>${esc(e.lesson)}</p>`).join(''):'<p style="color:var(--mute)">Add a one-line lesson to each day.</p>'}</div>`;
+  <div class="card"><small>Avg discipline</small><div class="v">${disc}/5</div></div>
+  <div class="card"><small>Win rate: plan followed vs not</small><div class="v">${wr(wf)} <span style="color:var(--mute);font-size:14px">vs</span> ${wr(nf)}</div></div></div>
+  <div class="cols"><div class="card"><b>Mistakes that cost me most often</b>${rows.length?rows.map(([k,v])=>`<div class="bar"><em>${esc(k)}</em><i style="width:${v/max*55}%"></i><span>${v}</span></div>`).join(''):'<p style="color:var(--mute)">No mistakes tagged yet.</p>'}</div>
+  <div class="card"><b>Latest lessons</b>${lessons.length?lessons.map(e=>`<p style="margin:8px 0"><span style="color:var(--mute)">${fmtDate(e.date)}</span><br>${esc(e.lesson)}</p>`).join(''):'<p style="color:var(--mute)">Add a one-line lesson to each day.</p>'}</div></div>`;
 }
-
 const T={journal:['Journal','Every trading day, reviewed.'],calendar:['Calendar','Green is a win, red is a loss, grey is breakeven or no trade.'],insights:['Insights','What your own records say about you.']};
 function render(){
   $('title').textContent=T[view][0];$('sub').textContent=T[view][1];
   document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
-  ({journal:renderJournal,calendar:renderCalendar,insights:renderInsights})[view]();
+  ({journal:renderJournal,calendar:renderCalendar,insights:renderInsights})[view]();banner();
 }
 document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>{view=b.dataset.v;render()});
 $('view').onclick=e=>{
   const ed=e.target.closest('[data-edit]'),dy=e.target.closest('.day[data-d]');
   if(ed)openForm(ed.dataset.edit);
-  else if(dy)openForm(data.find(x=>x.date===dy.dataset.d)?dy.dataset.d:null),!data.find(x=>x.date===dy.dataset.d)&&($('date').value=dy.dataset.d);
+  else if(dy){const has=data.find(x=>x.date===dy.dataset.d);openForm(has?has.date:null);if(!has)$('date').value=dy.dataset.d}
 };
 
-function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
-$('exJ').onclick=()=>dl('gold-journal-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(data,null,2),'application/json');
+/* ---------- theme ---------- */
+function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.abTheme=t}catch(e){}$('theme').textContent=t==='dark'?'Light mode':'Dark mode'}
+$('theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+setTheme(document.documentElement.dataset.theme);
+
+/* ---------- backup ---------- */
+function dl(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+const toURL=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(b)});
+async function exportAll(){
+  if(!data.length){toast('Nothing to back up yet.');return}
+  const ids=[...new Set(data.flatMap(e=>(e.imgs||[]).map(i=>i.id)))],imgs=[];
+  for(const id of ids){const r=await DB.get('images',id);if(r)imgs.push({id,data:await toURL(r.blob)})}
+  const out={app:'after-the-bell',version:2,exported:new Date().toISOString(),entries:data,images:imgs};
+  dl('after-the-bell-backup-'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify(out)],{type:'application/json'}));
+  localStorage.abLast=Date.now();localStorage.abChanges=0;banner();
+  const miss=ids.length-imgs.length;
+  toast(`Backup saved: ${data.length} days and ${imgs.length} images.`+(miss?` ${miss} image(s) were missing and could not be included.`:'')+' Keep the file somewhere safe, like Google Drive.',9000);
+}
+$('exA').onclick=exportAll;$('bnow').onclick=exportAll;
 $('exC').onclick=()=>{
-  const cols=['date','dir','o','h','l','c','res','pnl','plan','ana','disc','mistakes','mkt','news','did','well','fail','wrong','diff','lesson','link'];
-  const q=v=>'"'+String(Array.isArray(v)?v.join('; '):v??'').replace(/"/g,'""')+'"';
-  dl('gold-journal.csv',[cols.join(',')].concat(data.map(e=>cols.map(c=>q(e[c])).join(','))).join('\n'),'text/csv');
+  const cols=['date','dir','o','h','l','c','res','pnl','plan','ana','disc','mistakes','mkt','news','did','well','fail','wrong','diff','lesson','notes','link','imgs'];
+  const q=v=>'"'+String(Array.isArray(v)?v.map(x=>x.cap||x).join('; '):v??'').replace(/"/g,'""')+'"';
+  dl('after-the-bell.csv',new Blob(['\ufeff'+[cols.join(',')].concat(data.map(e=>cols.map(c=>c==='imgs'?q((e.imgs||[]).length+' image(s)'):q(e[c])).join(','))).join('\n')],{type:'text/csv'}));
+  toast('CSV holds the text only. Use Full backup to keep images.');
 };
 $('imp').onclick=()=>$('file').click();
-$('file').onchange=e=>{
-  const f=e.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{try{const arr=JSON.parse(r.result);if(!Array.isArray(arr))throw 0;
-    if(!confirm('Merge '+arr.length+' days into your journal? Matching dates will be overwritten.'))return;
-    const map=new Map(data.map(x=>[x.date,x]));arr.forEach(x=>x.date&&map.set(x.date,x));
-    data=[...map.values()].sort((a,b)=>b.date.localeCompare(a.date));persist();render()}catch(err){alert('That file is not a valid journal backup.')}};
-  r.readAsText(f);e.target.value='';
+$('file').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const j=JSON.parse(await f.text()),ent=Array.isArray(j)?j:j.entries,imgs=Array.isArray(j)?[]:(j.images||[]);
+    if(!Array.isArray(ent))throw 0;
+    if(!confirm(`Restore ${ent.length} days and ${imgs.length} images? Days with the same date will be overwritten.`))return;
+    for(const i of imgs){const blob=await (await fetch(i.data)).blob();await DB.put('images',{id:i.id,blob});delete urlCache[i.id]}
+    for(const x of ent)if(x&&x.date)await DB.put('entries',x);
+    data=(await DB.all('entries')).sort((a,b)=>b.date.localeCompare(a.date));
+    render();usage();toast(`Restored ${ent.length} days and ${imgs.length} images.`);
+  }catch(err){alert('That file is not a valid After the Bell backup.')}
 };
-render();
+function banner(){
+  const last=+localStorage.abLast||0,ch=+localStorage.abChanges||0,days=last?Math.floor((Date.now()-last)/864e5):null;
+  $('last').textContent=last?`Last backup: ${days===0?'today':days+' day(s) ago'}`:'No backup yet';
+  const need=data.length&&(!last||days>=7||ch>=5);
+  $('banner').classList.toggle('on',!!need);
+  if(need)$('bmsg').textContent=!last?'You have not backed up yet. Save a full backup so nothing is lost if browser data is cleared.':ch>=5?`${ch} changes since your last backup.`:`Your last backup was ${days} days ago.`;
+}
+async function usage(){try{const s=await navigator.storage.estimate();$('usage').textContent=`Stored: ${(s.usage/1048576).toFixed(1)} MB`}catch(e){}}
+
+/* ---------- start ---------- */
+(async()=>{
+  try{await DB.open()}catch(e){toast('Browser storage is unavailable here. Use a normal window, and back up before closing.',12000)}
+  data=await DB.all('entries');
+  if(!data.length){try{const old=JSON.parse(localStorage.getItem('goldStudyJournal.v1')||'[]');for(const x of old){x.imgs=[];await DB.put('entries',x)}data=old}catch(e){}}
+  data.sort((a,b)=>b.date.localeCompare(a.date));
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  render();usage();
+})();
 </script>
 </body>
 </html>
