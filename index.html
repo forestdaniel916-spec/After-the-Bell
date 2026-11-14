@@ -92,6 +92,17 @@ label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
 .lb img{max-width:96vw;max-height:84vh;border-radius:8px}
 .lb p{color:#fff;margin:10px 0 0}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:10;display:none;max-width:420px}
+.cop{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:14px;align-items:start}
+.cop .stack{display:grid;gap:14px}
+.chat{min-height:380px;max-height:60vh;overflow:auto;margin:12px 0}
+.msg{padding:10px 12px;border-radius:10px;margin:8px 0;white-space:pre-wrap;line-height:1.6;color:var(--body)}
+.msg.user{background:var(--field);border:1px solid var(--line);color:var(--text)}
+.note{font-size:12px;color:var(--mute)}
+summary{cursor:pointer}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.send{display:flex;gap:8px;align-items:flex-end}
+.send textarea{min-height:56px}
+@media(max-width:900px){.cop{grid-template-columns:1fr}}
 @media(max-width:900px){.app{flex-direction:column}.side{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center}.sp,.sbox{display:none}main{padding:18px 14px}.grid2,.two{grid-template-columns:1fr}.list{grid-template-columns:1fr}.cols{grid-template-columns:1fr}.day{min-height:60px}}
 </style>
 </head>
@@ -102,6 +113,7 @@ label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
     <button class="nav on" data-v="journal">Journal</button>
     <button class="nav" data-v="calendar">Calendar</button>
     <button class="nav" data-v="insights">Insights</button>
+    <button class="nav" data-v="copilot">Copilot</button>
     <div class="sp"></div>
     <div class="sbox">
       <b style="color:var(--text)">Backup</b>
@@ -330,11 +342,11 @@ function renderInsights(){
   <div class="cols"><div class="card"><b>Mistakes that cost me most often</b>${rows.length?rows.map(([k,v])=>`<div class="bar"><em>${esc(k)}</em><i style="width:${v/max*55}%"></i><span>${v}</span></div>`).join(''):'<p style="color:var(--mute)">No mistakes tagged yet.</p>'}</div>
   <div class="card"><b>Latest lessons</b>${lessons.length?lessons.map(e=>`<p style="margin:8px 0"><span style="color:var(--mute)">${fmtDate(e.date)}</span><br>${esc(e.lesson)}</p>`).join(''):'<p style="color:var(--mute)">Add a one-line lesson to each day.</p>'}</div></div>`;
 }
-const T={journal:['Journal','Every trading day, reviewed.'],calendar:['Calendar','Green is a win, red is a loss, grey is breakeven or no trade.'],insights:['Insights','What your own records say about you.']};
+const T={journal:['Journal','Every trading day, reviewed.'],calendar:['Calendar','Green is a win, red is a loss, grey is breakeven or no trade.'],insights:['Insights','What your own records say about you.'],copilot:['Copilot','Ask about your days, your plan and your patterns.']};
 function render(){
   $('title').textContent=T[view][0];$('sub').textContent=T[view][1];
   document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
-  ({journal:renderJournal,calendar:renderCalendar,insights:renderInsights})[view]();banner();
+  ({journal:renderJournal,calendar:renderCalendar,insights:renderInsights,copilot:renderCopilot})[view]();banner();
 }
 document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>{view=b.dataset.v;render()});
 $('view').onclick=e=>{
@@ -355,7 +367,7 @@ async function exportAll(){
   if(!data.length){toast('Nothing to back up yet.');return}
   const ids=[...new Set(data.flatMap(e=>(e.imgs||[]).map(i=>i.id)))],imgs=[];
   for(const id of ids){const r=await DB.get('images',id);if(r)imgs.push({id,data:await toURL(r.blob)})}
-  const out={app:'after-the-bell',version:2,exported:new Date().toISOString(),entries:data,images:imgs};
+  const out={app:'after-the-bell',version:2,exported:new Date().toISOString(),entries:data,images:imgs,plan:localStorage.abPlan||''};
   dl('after-the-bell-backup-'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify(out)],{type:'application/json'}));
   localStorage.abLast=Date.now();localStorage.abChanges=0;banner();
   const miss=ids.length-imgs.length;
@@ -377,6 +389,7 @@ $('file').onchange=async e=>{
     if(!confirm(`Restore ${ent.length} days and ${imgs.length} images? Days with the same date will be overwritten.`))return;
     for(const i of imgs){const blob=await (await fetch(i.data)).blob();await DB.put('images',{id:i.id,blob});delete urlCache[i.id]}
     for(const x of ent)if(x&&x.date)await DB.put('entries',x);
+    if(!Array.isArray(j)&&j.plan&&!localStorage.abPlan)localStorage.abPlan=j.plan;
     data=(await DB.all('entries')).sort((a,b)=>b.date.localeCompare(a.date));
     render();usage();toast(`Restored ${ent.length} days and ${imgs.length} images.`);
   }catch(err){alert('That file is not a valid After the Bell backup.')}
@@ -389,6 +402,119 @@ function banner(){
   if(need)$('bmsg').textContent=!last?'You have not backed up yet. Save a full backup so nothing is lost if browser data is cleared.':ch>=5?`${ch} changes since your last backup.`:`Your last backup was ${days} days ago.`;
 }
 async function usage(){try{const s=await navigator.storage.estimate();$('usage').textContent=`Stored: ${(s.usage/1048576).toFixed(1)} MB`}catch(e){}}
+
+/* ---------- copilot ---------- */
+let chat=[],busy=false;
+const AI=()=>{try{return JSON.parse(localStorage.abAI||'{}')}catch(e){return{}}};
+const clip=(s,n=600)=>{s=String(s||'');return s.length>n?s.slice(0,n)+'…':s};
+const fmt=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+function line(e){
+  const p=[`${e.date} (${e.dir})`];
+  if(e.o!=null)p.push(`O${e.o} H${e.h} L${e.l} C${e.c}`);
+  p.push(`${e.res}${e.pnl!=null?' '+money(e.pnl):''}`,`plan followed: ${e.plan}`,`analysis correct: ${e.ana}`,`discipline ${e.disc}/5`);
+  if((e.mistakes||[]).length)p.push('mistakes: '+e.mistakes.join(', '));
+  let t=p.join(' | ');
+  [['market','mkt'],['news','news'],['trade','did'],['went well','well'],['failed','fail'],['did wrong','wrong'],['do differently','diff'],['lesson','lesson'],['notes','notes']].forEach(([l,k])=>{if(e[k])t+=`\n  ${l}: ${clip(e[k])}`});
+  if((e.imgs||[]).length)t+=`\n  screenshots: ${e.imgs.length}`;
+  return t;
+}
+function focusEntry(){const v=$('focus')?$('focus').value:'latest';return v==='latest'?data[0]:data.find(x=>x.date===v)}
+function system(){
+  const n=data.length,tr=data.filter(e=>e.res!=='No trade'),w=data.filter(e=>e.res==='Win').length;
+  const pc=k=>n?Math.round(data.filter(e=>e[k]==='Yes').length/n*100)+'%':'-';
+  const cnt={};data.forEach(e=>(e.mistakes||[]).forEach(m=>{if(m!=='No mistake')cnt[m]=(cnt[m]||0)+1}));
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} x${v}`).join(', ')||'none tagged';
+  const f=focusEntry();
+  return `You are the trading copilot inside a personal XAUUSD (gold) study journal. The trader logs each trading day after the session: what gold did, what he did, what went well, what failed, his mistakes and lessons.
+Rules for you:
+- Use simple, plain, warm language. Short paragraphs. Write plain text: no markdown headings or tables, short dash lists are fine.
+- Be honest and direct. Do not flatter. Judge the process (plan, discipline, risk) separately from the outcome (win or loss).
+- Use only what is in the journal. If there are only a few days, say the sample is thin and avoid firm conclusions. Never invent prices, news or levels.
+- Be actionable: end with 1 to 3 concrete rules or experiments for the next session.
+- You are not a financial advisor. Do not promise profits or tell him to take a specific live trade. Help him review, think and plan.
+
+TRADING PLAN:
+${localStorage.abPlan||'(not written yet)'}
+
+JOURNAL STATS: ${n} days logged, win rate on traded days ${tr.length?Math.round(w/tr.length*100)+'%':'-'}, plan followed ${pc('plan')}, analysis correct ${pc('ana')}. Mistake counts: ${top}.
+
+FOCUS DAY:
+${f?line(f):'(no days logged yet)'}
+
+RECENT DAYS (newest first):
+${data.slice(0,30).map(line).join('\n')||'(none)'}`;
+}
+function drawChat(){const c=$('chat');if(!c)return;c.innerHTML=chat.length?chat.map(m=>`<div class="msg ${m.role}">${fmt(m.content)||'…'}</div>`).join(''):'<div class="note">Pick a quick action or type a question. Copilot reads your plan and your logged days.</div>';c.scrollTop=c.scrollHeight}
+function paintLast(){const c=$('chat');if(!c||!c.lastElementChild)return;c.lastElementChild.innerHTML=fmt(chat[chat.length-1].content)||'…';c.scrollTop=c.scrollHeight}
+async function send(text){
+  text=(text||'').trim();if(busy||!text)return;
+  const a=AI();if(!a.key){toast('Add your API key in Setup first, or use Copy prompt.');return}
+  busy=true;chat.push({role:'user',content:text},{role:'assistant',content:''});drawChat();
+  try{
+    const msgs=chat.slice(0,-1).map(m=>({role:m.role,content:m.content}));
+    const f=focusEntry();
+    if($('incl')&&$('incl').checked&&f&&(f.imgs||[]).length){
+      const blocks=[];
+      for(const i of f.imgs.slice(0,4)){const r=await DB.get('images',i.id);if(r){blocks.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:(await toURL(r.blob)).split(',')[1]}});if(i.cap)blocks.push({type:'text',text:'Screenshot caption: '+i.cap})}}
+      msgs[msgs.length-1]={role:'user',content:[...blocks,{type:'text',text}]};
+    }
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':a.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:a.model||'claude-sonnet-5-5',max_tokens:1500,stream:true,system:system(),messages:msgs})});
+    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error&&j.error.message||('Error '+r.status))}
+    const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
+    for(;;){
+      const {done,value}=await rd.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop();
+      for(const ln of lines){
+        if(!ln.startsWith('data:'))continue;
+        try{const ev=JSON.parse(ln.slice(5));
+          if(ev.type==='content_block_delta'&&ev.delta.type==='text_delta'){chat[chat.length-1].content+=ev.delta.text;paintLast()}
+          else if(ev.type==='error')throw new Error(ev.error.message)}
+        catch(e){if(!(e instanceof SyntaxError))throw e}
+      }
+    }
+  }catch(err){
+    chat[chat.length-1].content+=(chat[chat.length-1].content?'\n\n':'')+'[Could not complete: '+(err.message==='Failed to fetch'?'no connection, or the browser blocked the request':err.message)+']';paintLast();
+  }
+  busy=false;
+}
+const QUICK={
+ 'Review my day':'Review the focus day. What did the market do, and did my read match it? What did I do well, where did I break my plan, and what is the one thing to change tomorrow?',
+ 'Weekly review':'Review my last 5 logged days. What repeated, what is working, what is costing me? Give me 3 rules for next week.',
+ 'Find my patterns':'Look across all my logged days. Find patterns in my mistakes, my results, my bias, and when I follow or break my plan. Tell me how reliable each pattern is given the number of days.',
+ 'Stress-test my plan':'Stress-test my trading plan against my journal. Where is it vague, which rules do I keep breaking, which rules have no evidence behind them, and what is missing (risk per trade, daily loss limit, news rules)? Suggest specific fixes.',
+ 'Plan tomorrow':'Using my journal and my plan, build a simple checklist for tomorrow\u2019s gold session: what has to be true to take a trade, levels and news to watch, what I will not do, and my risk rules.'
+};
+function renderCopilot(){
+  const a=AI();
+  $('view').innerHTML=`<div class="cop"><div class="stack">
+  <div class="card"><details ${a.key?'':'open'}><summary><b>Setup</b> <small>${a.key?'API key saved in this browser':'add your API key to chat here'}</small></summary>
+    <label>Anthropic API key</label><input type="password" id="akey" placeholder="sk-ant-..." value="${esc(a.key||'')}" autocomplete="off">
+    <label>Model</label><input id="amodel" value="${esc(a.model||'claude-sonnet-5-5')}">
+    <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm pri" id="asave">Save</button><button class="btn sm" id="aclear">Remove key</button></div>
+    <p class="note">Your key stays in this browser and is never put in the backup file. When you ask a question, your plan and journal text are sent to Anthropic to get the answer. No key? Use Copy prompt and paste it into Claude at claude.ai.</p></details></div>
+  <div class="card"><b>My trading plan</b><br><small class="note">Copilot checks your days against this. Write your rules in simple words.</small>
+    <textarea id="myplan" style="min-height:190px;margin-top:8px" placeholder="Example: I only trade London and New York. Risk 1% per trade. Max 2 losses a day, then I stop. No trades 10 minutes around red news.">${esc(localStorage.abPlan||'')}</textarea></div>
+  </div>
+  <div class="card"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><b>Copilot</b>
+    <select id="focus" style="width:auto"><option value="latest">Focus day: latest</option>${data.slice(0,60).map(e=>`<option value="${e.date}">${fmtDate(e.date)}</option>`).join('')}</select>
+    <label style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" id="incl" style="width:auto"> Include that day\u2019s screenshots (uses more credit)</label>
+    <button class="btn sm" id="clr" style="margin-left:auto">Clear chat</button></div>
+    <div class="quick">${Object.keys(QUICK).map(k=>`<button class="btn sm" data-q="${esc(k)}">${k}</button>`).join('')}</div>
+    <div class="chat" id="chat"></div>
+    <div class="send"><textarea id="ask" placeholder="Ask about a day, a setup, a mistake, or your plan. Enter to send, Shift+Enter for a new line."></textarea><button class="btn pri" id="go">Send</button><button class="btn" id="cp">Copy prompt</button></div></div></div>`;
+  drawChat();
+  $('asave').onclick=()=>{localStorage.abAI=JSON.stringify({key:$('akey').value.trim(),model:$('amodel').value.trim()||'claude-sonnet-5-5'});toast('Saved.');renderCopilot()};
+  $('aclear').onclick=()=>{if(confirm('Remove your API key from this browser?')){delete localStorage.abAI;renderCopilot()}};
+  $('myplan').onchange=e=>{localStorage.abPlan=e.target.value;changed();toast('Plan saved.')};
+  document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>send(QUICK[b.dataset.q]));
+  $('go').onclick=()=>{const t=$('ask').value;$('ask').value='';send(t)};
+  $('ask').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('go').click()}};
+  $('clr').onclick=()=>{chat=[];drawChat()};
+  $('cp').onclick=async()=>{
+    const q=$('ask').value.trim()||QUICK['Review my day'];
+    try{await navigator.clipboard.writeText(system()+'\n\nQUESTION:\n'+q);toast('Copied. Paste it into a new chat at claude.ai. Screenshots are not included.')}catch(e){toast('Could not copy. Your browser blocked clipboard access.')}
+  };
+}
 
 /* ---------- start ---------- */
 (async()=>{
