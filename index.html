@@ -458,7 +458,7 @@ async function send(text){
       for(const i of f.imgs.slice(0,4)){const r=await DB.get('images',i.id);if(r){blocks.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:(await toURL(r.blob)).split(',')[1]}});if(i.cap)blocks.push({type:'text',text:'Screenshot caption: '+i.cap})}}
       msgs[msgs.length-1]={role:'user',content:[...blocks,{type:'text',text}]};
     }
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':a.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:a.model||'claude-sonnet-5-5',max_tokens:1500,stream:true,system:system(),messages:msgs})});
+    const r=await fetch('https://api.deepseek.com/anthropic/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':a.key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:a.model||'deepseek-chat',max_tokens:1500,stream:true,system:system(),messages:msgs})});
     if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error&&j.error.message||('Error '+r.status))}
     const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
     for(;;){
@@ -488,10 +488,10 @@ function renderCopilot(){
   const a=AI();
   $('view').innerHTML=`<div class="cop"><div class="stack">
   <div class="card"><details ${a.key?'':'open'}><summary><b>Setup</b> <small>${a.key?'API key saved in this browser':'add your API key to chat here'}</small></summary>
-    <label>Anthropic API key</label><input type="password" id="akey" placeholder="sk-ant-..." value="${esc(a.key||'')}" autocomplete="off">
-    <label>Model</label><input id="amodel" value="${esc(a.model||'claude-sonnet-5-5')}">
+    <label>DeepSeek API key</label><input type="password" id="akey" placeholder="sk-..." value="${esc(a.key||'')}" autocomplete="off">
+    <label>Model</label><input id="amodel" value="${esc(a.model||'deepseek-chat')}">
     <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm pri" id="asave">Save</button><button class="btn sm" id="aclear">Remove key</button></div>
-    <p class="note">Your key stays in this browser and is never put in the backup file. When you ask a question, your plan and journal text are sent to Anthropic to get the answer. No key? Use Copy prompt and paste it into Claude at claude.ai.</p></details></div>
+    <p class="note">Your key stays in this browser and is never put in the backup file. When you ask a question, your plan and journal text are sent to DeepSeek to get the answer. No key? Use Copy prompt and paste it into DeepSeek's chat.</p></details></div>
   <div class="card"><b>My trading plan</b><br><small class="note">Copilot checks your days against this. Write your rules in simple words.</small>
     <textarea id="myplan" style="min-height:190px;margin-top:8px" placeholder="Example: I only trade London and New York. Risk 1% per trade. Max 2 losses a day, then I stop. No trades 10 minutes around red news.">${esc(localStorage.abPlan||'')}</textarea></div>
   </div>
@@ -503,7 +503,7 @@ function renderCopilot(){
     <div class="chat" id="chat"></div>
     <div class="send"><textarea id="ask" placeholder="Ask about a day, a setup, a mistake, or your plan. Enter to send, Shift+Enter for a new line."></textarea><button class="btn pri" id="go">Send</button><button class="btn" id="cp">Copy prompt</button></div></div></div>`;
   drawChat();
-  $('asave').onclick=()=>{localStorage.abAI=JSON.stringify({key:$('akey').value.trim(),model:$('amodel').value.trim()||'claude-sonnet-5-5'});toast('Saved.');renderCopilot()};
+  $('asave').onclick=()=>{localStorage.abAI=JSON.stringify({key:$('akey').value.trim(),model:$('amodel').value.trim()||'deepseek-chat'});toast('Saved.');renderCopilot()};
   $('aclear').onclick=()=>{if(confirm('Remove your API key from this browser?')){delete localStorage.abAI;renderCopilot()}};
   $('myplan').onchange=e=>{localStorage.abPlan=e.target.value;changed();toast('Plan saved.')};
   document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>send(QUICK[b.dataset.q]));
@@ -512,7 +512,7 @@ function renderCopilot(){
   $('clr').onclick=()=>{chat=[];drawChat()};
   $('cp').onclick=async()=>{
     const q=$('ask').value.trim()||QUICK['Review my day'];
-    try{await navigator.clipboard.writeText(system()+'\n\nQUESTION:\n'+q);toast('Copied. Paste it into a new chat at claude.ai. Screenshots are not included.')}catch(e){toast('Could not copy. Your browser blocked clipboard access.')}
+    try{await navigator.clipboard.writeText(system()+'\n\nQUESTION:\n'+q);toast('Copied. Paste it into a new chat at chat.deepseek.com. Screenshots are not included.')}catch(e){toast('Could not copy. Your browser blocked clipboard access.')}
   };
 }
 
