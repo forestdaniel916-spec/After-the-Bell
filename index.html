@@ -92,6 +92,12 @@ label{display:block;font-size:12px;color:var(--mute);margin:8px 0 3px}
 .lb img{max-width:96vw;max-height:84vh;border-radius:8px}
 .lb p{color:#fff;margin:10px 0 0}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:10;display:none;max-width:420px}
+.chart svg{width:100%;height:auto;display:block}
+table.t{width:100%;border-collapse:collapse;margin-top:8px}
+.t th,.t td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right}
+.t th{color:var(--mute);font-weight:500;font-size:12px}
+.t th:first-child,.t td:first-child{text-align:left}
+.pos{color:var(--win)}.neg{color:var(--loss)}
 .cop{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:14px;align-items:start}
 .cop .stack{display:grid;gap:14px}
 .chat{min-height:380px;max-height:60vh;overflow:auto;margin:12px 0}
@@ -112,6 +118,7 @@ summary{cursor:pointer}
     <div class="logo"><b>XAU</b><span>After the Bell</span></div>
     <button class="nav on" data-v="journal">Journal</button>
     <button class="nav" data-v="calendar">Calendar</button>
+    <button class="nav" data-v="metrics">Metrics</button>
     <button class="nav" data-v="insights">Insights</button>
     <button class="nav" data-v="copilot">Copilot</button>
     <div class="sp"></div>
@@ -138,6 +145,8 @@ summary{cursor:pointer}
   <div class="sec">1. What gold did</div>
   <div class="row">
     <div><label>Date</label><input type="date" id="date"></div>
+    <div><label>Time (optional)</label><input type="time" id="time"></div>
+    <div style="grid-column:span 2"><label>Label (e.g. London trade, Post-NY review)</label><input id="label"></div>
     <div><label>Direction</label><select id="dir"><option>Bullish</option><option>Bearish</option><option>Ranging</option></select></div>
     <div><label>Open</label><input type="number" step="0.01" id="o"></div>
     <div><label>High</label><input type="number" step="0.01" id="h"></div>
@@ -182,12 +191,12 @@ summary{cursor:pointer}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const MISTAKES=['FOMO entry','Entered early','Moved stop loss','Over-traded','Ignored my plan','Traded the news','Revenge trade','Oversized lot','Exited too early','Held too long','Wrong bias','No mistake'];
-const F=['date','dir','o','h','l','c','mkt','news','res','pnl','plan','ana','did','well','fail','wrong','diff','lesson','notes','disc','link'];
-let data=[],view='journal',editing=null,calMonth=new Date(),pending=[],urlCache={};
+const F=['date','time','label','dir','o','h','l','c','mkt','news','res','pnl','plan','ana','did','well','fail','wrong','diff','lesson','notes','disc','link'];
+let dayFilter=null,mY='all',mM='all',data=[],view='journal',editing=null,calMonth=new Date(),pending=[],urlCache={};
 
 /* ---------- storage (IndexedDB: entries + images) ---------- */
 const DB={db:null,
- open(){return new Promise((res,rej)=>{const r=indexedDB.open('afterTheBell',1);r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('entries',{keyPath:'date'});d.createObjectStore('images',{keyPath:'id'})};r.onsuccess=()=>{this.db=r.result;res()};r.onerror=()=>rej(r.error)})},
+ open(){return new Promise((res,rej)=>{const r=indexedDB.open('afterTheBell',2);r.onupgradeneeded=ev=>{const d=r.result,t=r.transaction;if(ev.oldVersion<1){d.createObjectStore('entries',{keyPath:'date'});d.createObjectStore('images',{keyPath:'id'})}if(ev.oldVersion<2){const lg=d.createObjectStore('logs',{keyPath:'id'});t.objectStore('entries').getAll().onsuccess=q=>q.target.result.forEach(e=>{e.id=e.id||'e_'+e.date.replace(/-/g,'')+'_a';lg.put(e)})}};r.onsuccess=()=>{this.db=r.result;res()};r.onerror=()=>rej(r.error)})},
  run(s,mode,fn){if(!this.db)return Promise.resolve(undefined);return new Promise((res,rej)=>{const t=this.db.transaction(s,mode);const rq=fn(t.objectStore(s));t.oncomplete=()=>res(rq&&rq.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})},
  all(s){return this.run(s,'readonly',o=>o.getAll()).then(r=>r||[])},
  get(s,k){return this.run(s,'readonly',o=>o.get(k))},
@@ -199,6 +208,7 @@ const fmtDate=d=>new Date(d+'T00:00:00').toLocaleDateString('en-GB',{weekday:'sh
 const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n||0).toFixed(2);
 const cls=r=>r==='Win'?'win':r==='Loss'?'loss':'be';
 const range=e=>(e.h!=null&&e.l!=null)?Math.round((e.h-e.l)*10)/10:null;
+const cmp=(a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')||String(b.id).localeCompare(String(a.id));
 const uid=()=>'img_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 function toast(m,ms=4500){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',ms)}
 
@@ -243,11 +253,11 @@ $('lb').onclick=()=>$('lb').classList.remove('open');
 /* ---------- form ---------- */
 $('chips').innerHTML=MISTAKES.map(m=>`<button type="button" class="chip" data-m="${m}">${m}</button>`).join('');
 $('chips').onclick=e=>{const b=e.target.closest('.chip');if(b)b.classList.toggle('on')};
-function openForm(date){
-  editing=date&&data.find(x=>x.date===date)||null;
-  $('mt').textContent=editing?'Edit '+fmtDate(editing.date):'Log a trading day';
+function openForm(id,presetDate){
+  editing=id&&data.find(x=>x.id===id)||null;
+  $('mt').textContent=editing?'Edit entry for '+fmtDate(editing.date):'Log an entry';
   F.forEach(k=>{$(k).value=editing?(editing[k]??''):''});
-  if(!editing){$('date').value=new Date().toISOString().slice(0,10);$('dir').value='Bullish';$('res').value='Win';$('plan').value='Yes';$('ana').value='Yes';$('disc').value='4'}
+  if(!editing){$('date').value=presetDate||new Date().toISOString().slice(0,10);$('dir').value='Bullish';$('res').value='Win';$('plan').value='Yes';$('ana').value='Yes';$('disc').value='4'}
   const on=editing?editing.mistakes||[]:[];
   document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',on.includes(c.dataset.m)));
   pending=editing?(editing.imgs||[]).map(i=>({id:i.id,cap:i.cap||''})):[];
@@ -256,7 +266,7 @@ function openForm(date){
   $('modal').classList.add('open');
 }
 const closeForm=()=>$('modal').classList.remove('open');
-$('add').onclick=()=>openForm();$('cancel').onclick=closeForm;
+$('add').onclick=()=>openForm(null,dayFilter);$('cancel').onclick=closeForm;
 $('modal').onclick=e=>{if(e.target.id==='modal')closeForm()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('lb').classList.contains('open'))$('lb').classList.remove('open');else closeForm()}});
 $('save').onclick=async()=>{
@@ -266,24 +276,21 @@ $('save').onclick=async()=>{
   r.disc=parseInt(r.disc);
   r.mistakes=[...document.querySelectorAll('.chip.on')].map(c=>c.dataset.m);
   r.imgs=pending.map(p=>({id:p.id,cap:p.cap.trim()}));
-  const dupe=data.find(x=>x.date===r.date&&(!editing||x.date!==editing.date));
-  if(dupe&&!confirm('You already logged this date. Replace it?'))return;
+  r.id=editing?editing.id:'e_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   try{
     for(const p of pending)if(p.blob)await DB.put('images',{id:p.id,blob:p.blob});
     const keep=new Set(r.imgs.map(i=>i.id));
-    for(const old of [editing,dupe].filter(Boolean))for(const i of old.imgs||[])if(!keep.has(i.id))await DB.del('images',i.id);
-    if(editing&&editing.date!==r.date)await DB.del('entries',editing.date);
-    await DB.put('entries',r);
+    if(editing)for(const i of editing.imgs||[])if(!keep.has(i.id))await DB.del('images',i.id);
+    await DB.put('logs',r);
   }catch(err){alert('Could not save. Your browser may be blocking storage. Try a normal (not private) window.');return}
-  data=data.filter(x=>x.date!==r.date&&(!editing||x.date!==editing.date));
-  data.push(r);data.sort((a,b)=>b.date.localeCompare(a.date));
+  data=data.filter(x=>x.id!==r.id);data.push(r);data.sort(cmp);
   changed();closeForm();render();usage();
 };
 $('del').onclick=async()=>{
-  if(!confirm('Delete this day and its images for good?'))return;
+  if(!confirm('Delete this entry and its images for good?'))return;
   for(const i of editing.imgs||[])await DB.del('images',i.id);
-  await DB.del('entries',editing.date);
-  data=data.filter(x=>x.date!==editing.date);changed();closeForm();render();usage();
+  await DB.del('logs',editing.id);
+  data=data.filter(x=>x.id!==editing.id);changed();closeForm();render();usage();
 };
 
 /* ---------- views ---------- */
@@ -291,7 +298,7 @@ const block=(t,v,full)=>v?`<div class="blk${full?' full':''}"><h4>${t}</h4><p>${
 function entryHTML(e){
   const r=range(e);
   return `<div class="entry ${cls(e.res)}">
-  <div class="eh"><h3>${fmtDate(e.date)}</h3><div><span class="tag ${e.dir==='Bullish'?'up':e.dir==='Bearish'?'down':''}">${e.dir}</span><span class="tag">${e.res} ${e.pnl!=null?money(e.pnl):''}</span><button class="btn sm" data-edit="${e.date}">Edit</button></div></div>
+  <div class="eh"><h3>${fmtDate(e.date)}${e.time?' · '+esc(e.time):''}${e.label?' · '+esc(e.label):''}</h3><div><span class="tag ${e.dir==='Bullish'?'up':e.dir==='Bearish'?'down':''}">${e.dir}</span><span class="tag">${e.res} ${e.pnl!=null?money(e.pnl):''}</span><button class="btn sm" data-edit="${e.id}">Edit</button></div></div>
   <div style="color:var(--mute);margin:4px 0">${e.o!=null?`O ${e.o} · H ${e.h} · L ${e.l} · C ${e.c}`:''}${r?` · Range ${r}`:''}</div>
   <div><span class="tag">Plan followed: ${e.plan}</span><span class="tag">Analysis correct: ${e.ana}</span><span class="tag">Discipline ${e.disc}/5</span>${(e.mistakes||[]).map(m=>`<span class="tag ${m==='No mistake'?'':'bad'}">${esc(m)}</span>`).join('')}</div>
   <div class="grid2">${block('What gold did',e.mkt)}${block('News and drivers',e.news)}${block('What I did',e.did,1)}${block('What went well',e.well)}${block('What failed',e.fail)}${block('What I did wrong',e.wrong)}${block('What I will do differently',e.diff)}${block('Lesson for tomorrow',e.lesson,1)}${block('Notes',e.notes,1)}</div>
@@ -301,10 +308,13 @@ function entryHTML(e){
 }
 function renderJournal(){
   const q=$('q')?$('q').value.toLowerCase():'',f=$('fr')?$('fr').value:'';
-  const list=data.filter(e=>(!f||e.res===f)&&(!q||JSON.stringify(e).toLowerCase().includes(q)));
-  $('view').innerHTML=`<div class="filters"><input id="q" placeholder="Search notes, mistakes, lessons" value="${esc(q)}" style="min-width:260px"><select id="fr"><option value="">All results</option>${['Win','Loss','Breakeven','No trade'].map(x=>`<option ${x===f?'selected':''}>${x}</option>`).join('')}</select></div>`+
-  (list.length?`<div class="list">${list.map(entryHTML).join('')}</div>`:`<div class="empty">${data.length?'No days match that search.':'No days logged yet. After the New York close, press “Log a day” and write down what gold did.'}</div>`);
+  const list=data.filter(e=>(!dayFilter||e.date===dayFilter)&&(!f||e.res===f)&&(!q||JSON.stringify(e).toLowerCase().includes(q)));
+  $('view').innerHTML=(dayFilter?`<div class="banner on" style="color:var(--text);background:var(--panel);border-color:var(--line)"><span>Showing ${fmtDate(dayFilter)}</span><button class="btn sm" id="showall">Show all days</button><button class="btn sm pri" id="addday">+ Add another entry for this day</button></div>`:'')+
+  `<div class="filters"><input id="q" placeholder="Search notes, mistakes, lessons" value="${esc(q)}" style="min-width:260px"><select id="fr"><option value="">All results</option>${['Win','Loss','Breakeven','No trade'].map(x=>`<option ${x===f?'selected':''}>${x}</option>`).join('')}</select></div>`+
+  (list.length?`<div class="list">${list.map(entryHTML).join('')}</div>`:`<div class="empty">${data.length?'No entries match that.':'Nothing logged yet. After the New York close, press “+ Log a day” and write down what gold did.'}</div>`);
   $('q').oninput=renderJournal;$('fr').onchange=renderJournal;
+  if($('showall'))$('showall').onclick=()=>{dayFilter=null;renderJournal()};
+  if($('addday'))$('addday').onclick=()=>openForm(null,dayFilter);
   if(q){$('q').focus();$('q').setSelectionRange(q.length,q.length)}
   hydrate($('view'));
 }
@@ -313,12 +323,91 @@ function renderCalendar(){
   let h=`<div class="filters"><button class="btn" id="pm">‹ Prev</button><b style="padding:8px">${first.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</b><button class="btn" id="nm">Next ›</button></div><div class="cal">`+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="h">${d}</div>`).join('');
   for(let i=0;i<pad;i++)h+='<div></div>';
   for(let d=1;d<=days;d++){
-    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,e=data.find(x=>x.date===ds),wk=[0,6].includes(new Date(y,m,d).getDay());
-    h+=`<button class="day ${e?cls(e.res):''} ${wk?'off':''}" ${wk?'disabled':''} data-d="${ds}"><b>${d}</b>${e?`<span>${e.dir}</span><span>${e.pnl!=null?money(e.pnl):e.res}</span>`:''}</button>`;
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,es=data.filter(x=>x.date===ds),wk=[0,6].includes(new Date(y,m,d).getDay());
+    const net=es.reduce((a,x)=>a+(x.pnl||0),0),W=es.filter(x=>x.res==='Win').length,L=es.filter(x=>x.res==='Loss').length;
+    const c=!es.length?'':net>0?'win':net<0?'loss':W>L?'win':L>W?'loss':'be';
+    h+=`<button class="day ${c} ${wk&&!es.length?'off':''}" ${wk&&!es.length?'disabled':''} data-d="${ds}"><b>${d}</b>${es.length?`<span>${es.length} ${es.length>1?'entries':'entry'}</span><span>${es.some(x=>x.pnl!=null)?money(net):''}</span>`:''}</button>`;
   }
   $('view').innerHTML=h+'</div>';
   $('pm').onclick=()=>{calMonth=new Date(y,m-1,1);renderCalendar()};
   $('nm').onclick=()=>{calMonth=new Date(y,m+1,1);renderCalendar()};
+}
+
+/* ---------- metrics ---------- */
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const closed=e=>e.res==='Win'||e.res==='Loss'||e.res==='Breakeven';
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const pc=n=>n>0?'pos':n<0?'neg':'';
+function st(a){
+  const t=a.filter(closed),w=t.filter(e=>e.res==='Win'),l=t.filter(e=>e.res==='Loss');
+  const p=t.map(e=>e.pnl||0),pnl=sum(p),gp=sum(p.filter(x=>x>0)),gl=-sum(p.filter(x=>x<0));
+  const wp=w.filter(e=>e.pnl!=null).map(e=>e.pnl),lp=l.filter(e=>e.pnl!=null).map(e=>e.pnl);
+  return {n:t.length,w:w.length,l:l.length,be:t.length-w.length-l.length,pnl,wr:t.length?w.length/t.length*100:null,avg:t.length?pnl/t.length:0,avgW:wp.length?sum(wp)/wp.length:0,avgL:lp.length?sum(lp)/lp.length:0,pf:gl?gp/gl:(gp?Infinity:null)};
+}
+const noData=()=>'<div class="note" style="padding:40px 0;text-align:center">No closed trades in this period yet.</div>';
+function barsSVG(vals,labels){
+  const n=vals.length;if(!n)return noData();
+  const W=600,H=190,pad=24,step=(W-pad*2)/n,bw=Math.min(34,step*.7),mid=H/2-8,mx=Math.max(1,...vals.map(Math.abs));
+  let g=`<line x1="${pad}" x2="${W-pad}" y1="${mid}" y2="${mid}" stroke="var(--line)"/>`;
+  vals.forEach((v,i)=>{const h=Math.abs(v)/mx*(mid-14),x=pad+i*step+(step-bw)/2;g+=`<rect x="${x}" y="${v>=0?mid-h:mid}" width="${bw}" height="${Math.max(h,1)}" rx="3" fill="${v>=0?'var(--win)':'var(--loss)'}"><title>${labels[i]}: ${money(v)}</title></rect>`});
+  const lab=i=>`<text x="${pad+i*step+step/2}" y="${H-4}" text-anchor="middle" font-size="11" fill="var(--mute)">${labels[i]}</text>`;
+  if(n<=12)labels.forEach((_,i)=>g+=lab(i));else g+=lab(0)+lab(n-1);
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+function lineSVG(vals,labels){
+  if(vals.length<2)return noData();
+  const W=600,H=190,pl=52,pr=12,pt=12,pb=24,mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1,n=vals.length;
+  const X=i=>pl+i*(W-pl-pr)/(n-1),Y=v=>pt+(mx-v)/rg*(H-pt-pb);
+  const pts=vals.map((v,i)=>X(i)+','+Y(v)).join(' ');
+  const ticks=[mx,(mx+mn)/2,mn].map(v=>`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${pl-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--mute)">${Math.round(v)}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}">${ticks}<polygon points="${X(0)},${H-pb} ${pts} ${X(n-1)},${H-pb}" fill="var(--gold)" opacity=".13"/><polyline points="${pts}" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linejoin="round"/><text x="${pl}" y="${H-5}" font-size="11" fill="var(--mute)">${labels[0]}</text><text x="${W-pr}" y="${H-5}" text-anchor="end" font-size="11" fill="var(--mute)">${labels[n-1]}</text></svg>`;
+}
+function donutSVG(w,l,be){
+  const t=w+l+be,R=62,C=2*Math.PI*R;let off=0,g=`<circle cx="90" cy="90" r="${R}" fill="none" stroke="var(--line)" stroke-width="22"/>`;
+  [[w,'var(--win)'],[l,'var(--loss)'],[be,'var(--be)']].forEach(([v,c])=>{if(!v)return;const len=v/t*C;g+=`<circle cx="90" cy="90" r="${R}" fill="none" stroke="${c}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 90 90)"/>`;off+=len});
+  return `<svg viewBox="0 0 180 180" style="max-width:190px;display:block;margin:0 auto">${g}<text x="90" y="97" text-anchor="middle" font-size="24" font-weight="700" fill="var(--text)">${t?Math.round(w/t*100)+'%':'-'}</text></svg><div class="note" style="text-align:center;margin-top:6px"><span class="pos">${w} wins</span> · <span class="neg">${l} losses</span> · ${be} breakeven</div>`;
+}
+function tbl(title,keys,fn){
+  const rows=keys.map(k=>[k,st(fn(k))]).filter(r=>r[1].n);
+  return `<div class="card"><b>${title}</b>${rows.length?`<table class="t"><tr><th></th><th>Trades</th><th>Win rate</th><th>Net P&amp;L</th></tr>${rows.map(([k,x])=>`<tr><td>${esc(k)}</td><td>${x.n}</td><td>${Math.round(x.wr)}%</td><td class="${pc(x.pnl)}">${money(x.pnl)}</td></tr>`).join('')}</table>`:'<p class="note">Not enough data yet.</p>'}</div>`;
+}
+function renderMetrics(){
+  const yrs=[...new Set(data.map(e=>e.date.slice(0,4)))].sort().reverse();
+  const a=data.filter(e=>(mY==='all'||e.date.slice(0,4)===mY)&&(mM==='all'||+e.date.slice(5,7)===+mM));
+  const asc=a.filter(closed).sort((x,y)=>-cmp(x,y)),s=st(a),bal=parseFloat(localStorage.abBal)||0;
+  const byDay={};asc.forEach(e=>byDay[e.date]=(byDay[e.date]||0)+(e.pnl||0));
+  const days=Object.keys(byDay).sort(),dv=days.map(d=>byDay[d]);
+  let run=bal,peak=bal,dd=0,ws=0,ls=0,bw=0,bl=0;const eq=[bal],eql=['Start'];
+  asc.forEach(e=>{run+=e.pnl||0;eq.push(run);eql.push(e.date);peak=Math.max(peak,run);dd=Math.max(dd,peak-run);
+    if(e.res==='Win'){ws++;ls=0}else if(e.res==='Loss'){ls++;ws=0}bw=Math.max(bw,ws);bl=Math.max(bl,ls)});
+  const best=dv.length?Math.max(...dv):0,worst=dv.length?Math.min(...dv):0;
+  const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const wd=[1,2,3,4,5,0,6].map(d=>{const x=asc.filter(e=>new Date(e.date+'T00:00:00').getDay()===d);return{l:WD[d],n:x.length,v:sum(x.map(e=>e.pnl||0))}}).filter((x,i)=>i<5||x.n);
+  const tags=MISTAKES.filter(m=>m!=='No mistake'&&st(a.filter(e=>(e.mistakes||[]).includes(m))).n>0);
+  const noPnl=asc.filter(e=>e.pnl==null).length;
+  const c=(l,v,k='')=>`<div class="card"><small>${l}</small><div class="v ${k}">${v}</div></div>`;
+  const pf=s.pf===Infinity?'∞':s.pf==null?'-':s.pf.toFixed(2);
+  $('view').innerHTML=`<div class="filters">
+   <select id="my"><option value="all">All years</option>${yrs.map(y=>`<option ${y===mY?'selected':''}>${y}</option>`).join('')}</select>
+   <select id="mm"><option value="all">All months</option>${MN.map((n,i)=>`<option value="${i+1}" ${String(i+1)===String(mM)?'selected':''}>${n}</option>`).join('')}</select>
+   <label style="margin:0;display:flex;align-items:center;gap:6px">Starting balance $<input id="mb" type="number" step="0.01" value="${bal||''}" style="width:120px"></label></div>
+  <div class="cards">${c('Win rate',s.wr==null?'-':Math.round(s.wr)+'%')}${c('Total net P&L',s.n?money(s.pnl):'-',pc(s.pnl))}${bal?c('Balance','$'+run.toFixed(2)):''}${c('Total trades',s.n)}${c('Wins',s.w,'pos')}${c('Losses',s.l,'neg')}${c('Breakeven',s.be)}${c('Avg P&L per trade',s.n?money(s.avg):'-',pc(s.avg))}${c('Average win',s.avgW?money(s.avgW):'-','pos')}${c('Average loss',s.avgL?money(s.avgL):'-','neg')}${c('Profit factor',pf)}${c('Best day',dv.length?money(best):'-',pc(best))}${c('Worst day',dv.length?money(worst):'-',pc(worst))}${c('Max drawdown',dd?'-$'+dd.toFixed(2):'-')}${c('Longest win streak',bw)}${c('Longest loss streak',bl)}${c('Current streak',ws?ws+' win'+(ws>1?'s':''):ls?ls+' loss'+(ls>1?'es':''):'-')}${c('Days traded',days.length)}</div>
+  ${noPnl?`<p class="note">${noPnl} closed trade(s) have no P&amp;L entered, so they count in the win rate but add $0.</p>`:''}
+  <div class="cols chart">
+   <div class="card"><b>Daily P&amp;L</b>${barsSVG(dv.slice(-40),days.slice(-40).map(d=>d.slice(5)))}</div>
+   <div class="card"><b>${bal?'Balance curve':'Cumulative P&L'}</b>${lineSVG(eq,eql)}</div>
+   <div class="card"><b>Win / loss split</b>${donutSVG(s.w,s.l,s.be)}</div>
+   <div class="card"><b>P&amp;L by weekday</b>${barsSVG(wd.map(x=>x.v),wd.map(x=>x.l))}</div>
+  </div>
+  <div class="cols" style="margin-top:14px">
+   ${tbl('Plan followed vs result',['Yes','Partly','No'],k=>a.filter(e=>e.plan===k))}
+   ${tbl('Analysis correct vs result',['Yes','Partly','No'],k=>a.filter(e=>e.ana===k))}
+   ${tbl('By market direction',['Bullish','Bearish','Ranging'],k=>a.filter(e=>e.dir===k))}
+   ${tbl('What each mistake costs',tags,k=>a.filter(e=>(e.mistakes||[]).includes(k)))}
+  </div>`;
+  $('my').onchange=e=>{mY=e.target.value;renderMetrics()};
+  $('mm').onchange=e=>{mM=e.target.value;renderMetrics()};
+  $('mb').onchange=e=>{localStorage.abBal=e.target.value;changed();renderMetrics()};
 }
 function renderInsights(){
   if(!data.length){$('view').innerHTML='<div class="empty">Log a few days and your patterns will show up here.</div>';return}
@@ -331,7 +420,7 @@ function renderInsights(){
   const rows=Object.entries(cnt).sort((a,b)=>b[1]-a[1]),max=rows.length?rows[0][1]:1;
   const lessons=data.filter(e=>e.lesson).slice(0,6);
   $('view').innerHTML=`<div class="cards">
-  <div class="card"><small>Days logged</small><div class="v">${n}</div></div>
+  <div class="card"><small>Entries logged</small><div class="v">${n}</div></div>
   <div class="card"><small>Win rate (traded days)</small><div class="v">${traded.length?Math.round(w/traded.length*100)+'%':'-'}</div></div>
   <div class="card"><small>Wins / Losses</small><div class="v"><span style="color:var(--win)">${w}</span> / <span style="color:var(--loss)">${l}</span></div></div>
   <div class="card"><small>Total P&amp;L</small><div class="v" style="color:${pnl>=0?'var(--win)':'var(--loss)'}">${money(pnl)}</div></div>
@@ -342,17 +431,17 @@ function renderInsights(){
   <div class="cols"><div class="card"><b>Mistakes that cost me most often</b>${rows.length?rows.map(([k,v])=>`<div class="bar"><em>${esc(k)}</em><i style="width:${v/max*55}%"></i><span>${v}</span></div>`).join(''):'<p style="color:var(--mute)">No mistakes tagged yet.</p>'}</div>
   <div class="card"><b>Latest lessons</b>${lessons.length?lessons.map(e=>`<p style="margin:8px 0"><span style="color:var(--mute)">${fmtDate(e.date)}</span><br>${esc(e.lesson)}</p>`).join(''):'<p style="color:var(--mute)">Add a one-line lesson to each day.</p>'}</div></div>`;
 }
-const T={journal:['Journal','Every trading day, reviewed.'],calendar:['Calendar','Green is a win, red is a loss, grey is breakeven or no trade.'],insights:['Insights','What your own records say about you.'],copilot:['Copilot','Ask about your days, your plan and your patterns.']};
+const T={journal:['Journal','Every trading day, reviewed.'],calendar:['Calendar','Green is a win, red is a loss, grey is breakeven or no trade.'],metrics:['Metrics','Your numbers for any month, year or all time.'],insights:['Insights','What your own records say about you.'],copilot:['Copilot','Ask about your days, your plan and your patterns.']};
 function render(){
   $('title').textContent=T[view][0];$('sub').textContent=T[view][1];
   document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
-  ({journal:renderJournal,calendar:renderCalendar,insights:renderInsights,copilot:renderCopilot})[view]();banner();
+  ({journal:renderJournal,calendar:renderCalendar,metrics:renderMetrics,insights:renderInsights,copilot:renderCopilot})[view]();banner();
 }
-document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>{view=b.dataset.v;render()});
+document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>{view=b.dataset.v;if(view==='journal')dayFilter=null;render()});
 $('view').onclick=e=>{
   const ed=e.target.closest('[data-edit]'),dy=e.target.closest('.day[data-d]');
   if(ed)openForm(ed.dataset.edit);
-  else if(dy){const has=data.find(x=>x.date===dy.dataset.d);openForm(has?has.date:null);if(!has)$('date').value=dy.dataset.d}
+  else if(dy){const ds=dy.dataset.d;if(data.some(x=>x.date===ds)){dayFilter=ds;view='journal';render()}else openForm(null,ds)}
 };
 
 /* ---------- theme ---------- */
@@ -367,7 +456,7 @@ async function exportAll(){
   if(!data.length){toast('Nothing to back up yet.');return}
   const ids=[...new Set(data.flatMap(e=>(e.imgs||[]).map(i=>i.id)))],imgs=[];
   for(const id of ids){const r=await DB.get('images',id);if(r)imgs.push({id,data:await toURL(r.blob)})}
-  const out={app:'after-the-bell',version:2,exported:new Date().toISOString(),entries:data,images:imgs,plan:localStorage.abPlan||''};
+  const out={app:'after-the-bell',version:2,exported:new Date().toISOString(),entries:data,images:imgs,plan:localStorage.abPlan||'',bal:localStorage.abBal||''};
   dl('after-the-bell-backup-'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify(out)],{type:'application/json'}));
   localStorage.abLast=Date.now();localStorage.abChanges=0;banner();
   const miss=ids.length-imgs.length;
@@ -375,7 +464,7 @@ async function exportAll(){
 }
 $('exA').onclick=exportAll;$('bnow').onclick=exportAll;
 $('exC').onclick=()=>{
-  const cols=['date','dir','o','h','l','c','res','pnl','plan','ana','disc','mistakes','mkt','news','did','well','fail','wrong','diff','lesson','notes','link','imgs'];
+  const cols=['id','date','time','label','dir','o','h','l','c','res','pnl','plan','ana','disc','mistakes','mkt','news','did','well','fail','wrong','diff','lesson','notes','link','imgs'];
   const q=v=>'"'+String(Array.isArray(v)?v.map(x=>x.cap||x).join('; '):v??'').replace(/"/g,'""')+'"';
   dl('after-the-bell.csv',new Blob(['\ufeff'+[cols.join(',')].concat(data.map(e=>cols.map(c=>c==='imgs'?q((e.imgs||[]).length+' image(s)'):q(e[c])).join(','))).join('\n')],{type:'text/csv'}));
   toast('CSV holds the text only. Use Full backup to keep images.');
@@ -388,9 +477,10 @@ $('file').onchange=async e=>{
     if(!Array.isArray(ent))throw 0;
     if(!confirm(`Restore ${ent.length} days and ${imgs.length} images? Days with the same date will be overwritten.`))return;
     for(const i of imgs){const blob=await (await fetch(i.data)).blob();await DB.put('images',{id:i.id,blob});delete urlCache[i.id]}
-    for(const x of ent)if(x&&x.date)await DB.put('entries',x);
+    for(const x of ent)if(x&&x.date){x.id=x.id||'e_'+x.date.replace(/-/g,'')+'_a';await DB.put('logs',x)}
     if(!Array.isArray(j)&&j.plan&&!localStorage.abPlan)localStorage.abPlan=j.plan;
-    data=(await DB.all('entries')).sort((a,b)=>b.date.localeCompare(a.date));
+    if(!Array.isArray(j)&&j.bal&&!localStorage.abBal)localStorage.abBal=j.bal;
+    data=(await DB.all('logs')).sort((a,b)=>cmp(a,b));
     render();usage();toast(`Restored ${ent.length} days and ${imgs.length} images.`);
   }catch(err){alert('That file is not a valid After the Bell backup.')}
 };
@@ -409,7 +499,7 @@ const AI=()=>{try{return JSON.parse(localStorage.abAI||'{}')}catch(e){return{}}}
 const clip=(s,n=600)=>{s=String(s||'');return s.length>n?s.slice(0,n)+'…':s};
 const fmt=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
 function line(e){
-  const p=[`${e.date} (${e.dir})`];
+  const p=[`${e.date}${e.time?' '+e.time:''}${e.label?' "'+e.label+'"':''} (${e.dir})`];
   if(e.o!=null)p.push(`O${e.o} H${e.h} L${e.l} C${e.c}`);
   p.push(`${e.res}${e.pnl!=null?' '+money(e.pnl):''}`,`plan followed: ${e.plan}`,`analysis correct: ${e.ana}`,`discipline ${e.disc}/5`);
   if((e.mistakes||[]).length)p.push('mistakes: '+e.mistakes.join(', '));
@@ -418,7 +508,7 @@ function line(e){
   if((e.imgs||[]).length)t+=`\n  screenshots: ${e.imgs.length}`;
   return t;
 }
-function focusEntry(){const v=$('focus')?$('focus').value:'latest';return v==='latest'?data[0]:data.find(x=>x.date===v)}
+function focusEntry(){const v=$('focus')?$('focus').value:'latest';return v==='latest'?data[0]:data.find(x=>x.id===v)}
 function system(){
   const n=data.length,tr=data.filter(e=>e.res!=='No trade'),w=data.filter(e=>e.res==='Win').length;
   const pc=k=>n?Math.round(data.filter(e=>e[k]==='Yes').length/n*100)+'%':'-';
@@ -436,7 +526,7 @@ Rules for you:
 TRADING PLAN:
 ${localStorage.abPlan||'(not written yet)'}
 
-JOURNAL STATS: ${n} days logged, win rate on traded days ${tr.length?Math.round(w/tr.length*100)+'%':'-'}, plan followed ${pc('plan')}, analysis correct ${pc('ana')}. Mistake counts: ${top}.
+JOURNAL STATS: ${n} entries logged, win rate on traded days ${tr.length?Math.round(w/tr.length*100)+'%':'-'}, plan followed ${pc('plan')}, analysis correct ${pc('ana')}. Mistake counts: ${top}.
 
 FOCUS DAY:
 ${f?line(f):'(no days logged yet)'}
@@ -458,7 +548,7 @@ async function send(text){
       for(const i of f.imgs.slice(0,4)){const r=await DB.get('images',i.id);if(r){blocks.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:(await toURL(r.blob)).split(',')[1]}});if(i.cap)blocks.push({type:'text',text:'Screenshot caption: '+i.cap})}}
       msgs[msgs.length-1]={role:'user',content:[...blocks,{type:'text',text}]};
     }
-    const r=await fetch('https://api.deepseek.com/anthropic/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':a.key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:a.model||'deepseek-chat',max_tokens:1500,stream:true,system:system(),messages:msgs})});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':a.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:a.model||'claude-sonnet-5-5',max_tokens:1500,stream:true,system:system(),messages:msgs})});
     if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error&&j.error.message||('Error '+r.status))}
     const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
     for(;;){
@@ -488,22 +578,22 @@ function renderCopilot(){
   const a=AI();
   $('view').innerHTML=`<div class="cop"><div class="stack">
   <div class="card"><details ${a.key?'':'open'}><summary><b>Setup</b> <small>${a.key?'API key saved in this browser':'add your API key to chat here'}</small></summary>
-    <label>DeepSeek API key</label><input type="password" id="akey" placeholder="sk-..." value="${esc(a.key||'')}" autocomplete="off">
-    <label>Model</label><input id="amodel" value="${esc(a.model||'deepseek-chat')}">
+    <label>Anthropic API key</label><input type="password" id="akey" placeholder="sk-ant-..." value="${esc(a.key||'')}" autocomplete="off">
+    <label>Model</label><input id="amodel" value="${esc(a.model||'claude-sonnet-5-5')}">
     <div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm pri" id="asave">Save</button><button class="btn sm" id="aclear">Remove key</button></div>
-    <p class="note">Your key stays in this browser and is never put in the backup file. When you ask a question, your plan and journal text are sent to DeepSeek to get the answer. No key? Use Copy prompt and paste it into DeepSeek's chat.</p></details></div>
+    <p class="note">Your key stays in this browser and is never put in the backup file. When you ask a question, your plan and journal text are sent to Anthropic to get the answer. No key? Use Copy prompt and paste it into Claude at claude.ai.</p></details></div>
   <div class="card"><b>My trading plan</b><br><small class="note">Copilot checks your days against this. Write your rules in simple words.</small>
     <textarea id="myplan" style="min-height:190px;margin-top:8px" placeholder="Example: I only trade London and New York. Risk 1% per trade. Max 2 losses a day, then I stop. No trades 10 minutes around red news.">${esc(localStorage.abPlan||'')}</textarea></div>
   </div>
   <div class="card"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><b>Copilot</b>
-    <select id="focus" style="width:auto"><option value="latest">Focus day: latest</option>${data.slice(0,60).map(e=>`<option value="${e.date}">${fmtDate(e.date)}</option>`).join('')}</select>
+    <select id="focus" style="width:auto"><option value="latest">Focus day: latest</option>${data.slice(0,60).map(e=>`<option value="${e.id}">${fmtDate(e.date)}${e.label?' · '+esc(e.label):''}</option>`).join('')}</select>
     <label style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" id="incl" style="width:auto"> Include that day\u2019s screenshots (uses more credit)</label>
     <button class="btn sm" id="clr" style="margin-left:auto">Clear chat</button></div>
     <div class="quick">${Object.keys(QUICK).map(k=>`<button class="btn sm" data-q="${esc(k)}">${k}</button>`).join('')}</div>
     <div class="chat" id="chat"></div>
     <div class="send"><textarea id="ask" placeholder="Ask about a day, a setup, a mistake, or your plan. Enter to send, Shift+Enter for a new line."></textarea><button class="btn pri" id="go">Send</button><button class="btn" id="cp">Copy prompt</button></div></div></div>`;
   drawChat();
-  $('asave').onclick=()=>{localStorage.abAI=JSON.stringify({key:$('akey').value.trim(),model:$('amodel').value.trim()||'deepseek-chat'});toast('Saved.');renderCopilot()};
+  $('asave').onclick=()=>{localStorage.abAI=JSON.stringify({key:$('akey').value.trim(),model:$('amodel').value.trim()||'claude-sonnet-5-5'});toast('Saved.');renderCopilot()};
   $('aclear').onclick=()=>{if(confirm('Remove your API key from this browser?')){delete localStorage.abAI;renderCopilot()}};
   $('myplan').onchange=e=>{localStorage.abPlan=e.target.value;changed();toast('Plan saved.')};
   document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>send(QUICK[b.dataset.q]));
@@ -512,16 +602,16 @@ function renderCopilot(){
   $('clr').onclick=()=>{chat=[];drawChat()};
   $('cp').onclick=async()=>{
     const q=$('ask').value.trim()||QUICK['Review my day'];
-    try{await navigator.clipboard.writeText(system()+'\n\nQUESTION:\n'+q);toast('Copied. Paste it into a new chat at chat.deepseek.com. Screenshots are not included.')}catch(e){toast('Could not copy. Your browser blocked clipboard access.')}
+    try{await navigator.clipboard.writeText(system()+'\n\nQUESTION:\n'+q);toast('Copied. Paste it into a new chat at claude.ai. Screenshots are not included.')}catch(e){toast('Could not copy. Your browser blocked clipboard access.')}
   };
 }
 
 /* ---------- start ---------- */
 (async()=>{
   try{await DB.open()}catch(e){toast('Browser storage is unavailable here. Use a normal window, and back up before closing.',12000)}
-  data=await DB.all('entries');
-  if(!data.length){try{const old=JSON.parse(localStorage.getItem('goldStudyJournal.v1')||'[]');for(const x of old){x.imgs=[];await DB.put('entries',x)}data=old}catch(e){}}
-  data.sort((a,b)=>b.date.localeCompare(a.date));
+  data=await DB.all('logs');
+  if(!data.length){try{const old=JSON.parse(localStorage.getItem('goldStudyJournal.v1')||'[]');for(const x of old){x.imgs=[];x.id='e_'+x.date.replace(/-/g,'')+'_a';await DB.put('logs',x)}data=old}catch(e){}}
+  data.sort((a,b)=>cmp(a,b));
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
   render();usage();
 })();
